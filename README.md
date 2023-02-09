@@ -183,6 +183,7 @@ function getRecordByName(string _name)
   }
 ```
 
+
 CROs can also see the number of patients currently staying within a given time range. Since records cannot be accessed until a patient provides their name, and dates are associated with ethereum addresses, the time range is essentially private since patients cannot be mapped to their current stay until they provide their name.
 
 ```javascript
@@ -235,3 +236,43 @@ $ solium -d contracts
 
 ## License
 [MIT](./LICENSE.md)
+
+```javascript
+
+const ipfsClient = require('ipfs-http-client')
+
+const projectId = 'PatientEmpower-ipfs-client'
+const projectSecret = 'dadrfGxgjsgjksg'
+const auth = 'Basic ' + Buffer.from(projectId + ':' + projectSecret).toString('base64')
+
+const ipfs = ipfsClient({
+	host: 'ipfs.infura.io'
+	port: 5001,
+	protocol: 'https',
+	headers: {
+		authorization: auth,
+	}.
+})
+
+export default ipfs
+```
+
+```javascript
+
+const uploadFile = (File) => {
+	const reader = new FileReader()
+	reader.readAsArrayBuffer(file)
+	reader.onloadend = () -> {
+		const buffer = Buffer.from(reader.result)
+		const res = await ipfs.add(buffer)
+
+		await contract.methods.addRecord(res[0].hash,
+			fileName, patientAddress).send({from:accounts[0]})
+		setAlert('New Record uploaded','success')
+
+		// refresh records
+		const records = await contract.,etjods.getRecords(
+			patientAddress).call({from:accounts[0]})
+	}
+}
+```
