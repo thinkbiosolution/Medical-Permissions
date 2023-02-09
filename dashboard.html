@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      section {
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <section>
+      <h2>Patient Record</h2>
+      <label for="patient-record-input">Search patient by Wallet address:</label>
+      <input id="patient-record-input" type="text"></input>
+      <button id="add-new-records-button">Add new records</button>
+    </section>
+    <section>
+      <h2>Register Patient</h2>
+      <label for="register-patient-input">Register patient by Wallet address:</label>
+      <input id="register-patient-input" type="text"></input>
+      <button id="register-button">Register</button>
+    </section>
+
+    <script>
+      const addNewRecordsButton = document.querySelector("#add-new-records-button");
+      addNewRecordsButton.addEventListener("click", () => {
+        // Add logic to add new records for the patient
+        const addRecord = async () => {
+          await contact.methods.addPatient().send({from: accounts[0]})
+          dispatch({
+          type: 'ADD_Record',
+          })
+        }
+      });
+
+      const registerButton = document.querySelector("#register-button");
+      registerButton.addEventListener("click", () => {
+        // Add logic to register the patient
+        const addPatient = async () => {
+          await contact.methods.addPatient().send({from: accounts[0]})
+          dispatch({
+          type: 'ADD_PATIENT',
+          })
+        }
+
+
+      });
+    </script>
+  </body>
+</html>
