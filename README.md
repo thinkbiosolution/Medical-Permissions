@@ -54,8 +54,7 @@ npm run test
 ```
 
 ## Scope
-A Permission Record System (contract deployer) that keeps records of patient permission using IPFS and allows users to retrieve permission using Smart Contracts on the Ethereum Blockchain. The record system includes permission date and type of medical data where permission is applicable (Such as Rx or Vitals or Disease Codes).
-:
+In the smart contact we first we defined a structure to Record Patient’s permission pertaining to medical data. Each block of Patient Permission is stored as Patient name, Hospital Name, Permission Start and End Date, and Type of Medical Information.:
 
 ```javascript
 struct Records {
@@ -68,34 +67,61 @@ struct Records {
     uint256 typeOfMedicalData;
 }
 ```
-CRO within the network:
+In the smart contact we then add the functionality where a new patient can be added / removed.
 
 ```javascript
-mapping (address => bool) public isHospital;
+    function addPatient(address _patient)
+        public
+        onlyOwner
+        patientDoesNotExist(_patient)
+        hospitalDoesNotExist(_patient)
+        notNull(_patient)
+    {
+        isPatient[_patient] = true;
+        emit PatientAddition(_patient);
+    }
+
+    function removePatient(address _patient)
+        public
+        onlyOwner
+        patientExist(_patient)
+    {
+        isPatient[_patient] = false;
+        emit PatientRemoval(_patient);
+    }
+
 ```
-Can access these records if and only if a patient provides their name:
+
+We then add functions to the smart contract that can add and retrieve Patient’s permission block. Only a Patient can add records, but both CRO and Patient can read records.
 
 ```javascript
-/// @dev Allows a patient to add their name to the record in the network.
-/// @param _recordID ID of the patient specific record.
-/// @param _name Name for the patient
-function addName(uint256 _recordID, string _name)
-    public
-    patientExist(msg.sender)
-    onlyPatient(_recordID)
-    recordExists(_recordID, msg.sender)
-    notEmpty(_name)
-    patientNotProvidedName(_recordID, msg.sender)
-{
-    records[_recordID][msg.sender].providedName = true;
-    records[_recordID][msg.sender].name = _name;
-    address hostpitalInRecord = records[_recordID][msg.sender].hospital;
-    mappingByName[hostpitalInRecord][_name] += 1;
+   function addRecord (
+        address _patientAddress,
+        address _hospital,
+        uint256 _permissionDateStart,
+        uint256 _permissionDateEnd,
+        uint256 _typeOfMedicalData)
+        public
+        onlyOwner
+        patientExist(_patientAddress)
+        hospitalExist(_hospital)
+    {
+        records[recordCount][_patientAddress].providedName = false;
+        records[recordCount][_patientAddress].patient = _patientAddress;
+        records[recordCount][_patientAddress].hospital = _hospital;
+        records[recordCount][_patientAddress].permissionDateStart = _permissionDateStart;
+        records[recordCount][_patientAddress].permissionDateEnd = _permissionDateEnd;
+        records[recordCount][_patientAddress].typeOfMedicalData = _typeOfMedicalData;
 
-    payPatient(msg.sender);
+        dateRanges[recordCount].permissionDateStart = _permissionDateStart;
+        dateRanges[recordCount].permissionDateEnd = _permissionDateEnd;
 
-    emit NameAddedToRecords(_recordID, msg.sender);
-}
+        emit PatientRecordAdded(recordCount, _patientAddress);
+
+        recordCount += 1;
+    }
+
+
 
 ```
 
@@ -103,26 +129,42 @@ As an incentive to share permissions, patients get paid in [tokens](./contracts/
 ```javascript
 /// @dev pays a patient for providing their name.
 /// @param _patientAddress to receive tokens.
-function payPatient(address _patientAddress)
-  private
-  notNull(_patientAddress)
-{
-  patientToken.transfer(_patientAddress, tokenRewardAmount);
-  emit PatientPaid(_patientAddress);
-}
+   function payPatient(address _patientAddress)
+        private
+        notNull(_patientAddress)
+    {
+        springToken.transfer(_patientAddress, tokenRewardAmount);
+        emit PatientPaid(_patientAddress);
+    }
 ```
 
-After patients share their name, CROs can access their matching records:
+After patients share their name, CROs can access their matching records.
+
 ```javascript
-function getRecord(uint _recordID, address _patientAddress)
-  public
-  recordExists(_recordID, _patientAddress)
-  patientProvidedName(_recordID, _patientAddress)
-  onlyHospital(_recordID, _patientAddress)
-  view {...}
+ function getRecord(uint _recordID, address _patientAddress)
+        public
+        recordExists(_recordID, _patientAddress)
+        patientProvidedName(_recordID, _patientAddress)
+        onlyHospital(_recordID, _patientAddress)
+        view
+        returns (
+            string _name,
+            address _hospital,
+            uint256 _permissionDateStart,
+            uint256 _permissionDateEnd,
+            uint256 _typeOfMedicalData
+        )
+    {
+        _name = records[_recordID][_patientAddress].name;
+        _hospital = records[_recordID][_patientAddress].hospital;
+        _permissionDateStart = records[_recordID][_patientAddress].permissionDateStart;
+        _permissionDateEnd = records[_recordID][_patientAddress].permissionDateEnd;
+        _typeOfMedicalData = records[_recordID][_patientAddress].typeOfMedicalData;
+    }
 ```
 
 CROs can also search by patient name to see how many records they currently have:
+
 ```javascript
 /// @dev Allows a Hospital to view the number of records for a patient.
 /// @param _name Name for the patient
@@ -141,7 +183,8 @@ function getRecordByName(string _name)
   }
 ```
 
-CROs can also see the number of patients currently staying within a given time range:
+CROs can also see the number of patients currently staying within a given time range. Since records cannot be accessed until a patient provides their name, and dates are associated with ethereum addresses, the time range is essentially private since patients cannot be mapped to their current stay until they provide their name.
+
 ```javascript
 /// @dev Allows a Hospital to view the number of patients on a given date range.
 /// @param from Starting date
@@ -161,9 +204,7 @@ function getCurrentPatients(uint from, uint to)
 }
 ```
 
-Since records cannot be accessed until a patient provides their name, and dates are
-associated with ethereum addresses, the time range is essentially private since patients
-cannot be mapped to their current stay until they provide their name.
+
 
 The contract can be [destroyed](./contracts/TokenDestructible.sol) and the remaining token balance is returned to the owner of the contract.
 
